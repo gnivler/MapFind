@@ -1,5 +1,4 @@
 # MapFind
-mod for Bannerlord
 
 Pretty much every link in the encyclopedia will now bring you to a settlement if you shift-click on it.
 
