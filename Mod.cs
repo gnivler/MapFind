@@ -10,64 +10,66 @@ using TaleWorlds.CampaignSystem.ViewModelCollection.Encyclopedia;
 using TaleWorlds.InputSystem;
 using TaleWorlds.MountAndBlade;
 
+// ReSharper disable UnusedMember.Global    
+// ReSharper disable UnusedMember.Local
+// ReSharper disable UnusedType.Global
+// ReSharper disable UnusedType.Local  
 // ReSharper disable InconsistentNaming
 
 namespace MapFind
 {
     public class Mod : MBSubModuleBase
     {
-        private readonly Harmony harmony = new Harmony("ca.gnivler.bannerlord.MapFind");
+        private const LogLevel level = LogLevel.Disabled;
         private static GauntletEncyclopediaScreenManager gauntletEncyclopediaScreenManager;
-        private static bool shouldClose;
+        private static GauntletClanScreen gauntletClanScreen;
+        private readonly Harmony harmony = new Harmony("ca.gnivler.bannerlord.MapFind");
 
         protected override void OnSubModuleLoad()
         {
             //Harmony.DEBUG = true;
-            Log("Startup " + DateTime.Now.ToShortTimeString());
+            Log("Startup " + DateTime.Now.ToShortTimeString(), LogLevel.Info);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
             //Harmony.DEBUG = false;
         }
 
-        private static void Log(object input)
+        private static void Log(object input, LogLevel logLevel)
         {
-            //FileLog.Log($"[MapFind] {input ?? "null"}");
+            if (level <= logLevel) FileLog.Log($"[MapFind] {input ?? "null"}");
         }
 
         private static void SetCameraToSettlement(string stringID)
         {
-            Log($"SetCameraToSettlement({stringID})");
-            Campaign.Current.TimeControlMode = CampaignTimeControlMode.Stop;
-            gauntletEncyclopediaScreenManager.CloseEncyclopedia();
-            MapScreen.Instance.SetMapCameraPosition(Settlement.Find(stringID).Position2D);
-            Traverse.Create(MapScreen.Instance).Method("UpdateMapCamera").GetValue();
+            try
+            {
+                Log($"SetCameraToSettlement({stringID})", LogLevel.Debug);
+                if (gauntletEncyclopediaScreenManager.IsEncyclopediaOpen) gauntletEncyclopediaScreenManager.CloseEncyclopedia();
+
+                if (gauntletClanScreen.IsActive) Traverse.Create(gauntletClanScreen).Method("CloseClanScreen").GetValue();
+
+                MapScreen.Instance.SetMapCameraPosition(Settlement.Find(stringID).Position2D);
+                Traverse.Create(MapScreen.Instance).Method("UpdateMapCamera").GetValue();
+            }
+            catch (Exception ex)
+            {
+                Log(ex, LogLevel.Error);
+            }
         }
 
         private static string ConvertLinkToSettlementName(string linkString)
         {
             var match = Regex.Match(linkString, @"Settlement-(.*)""><b>", RegexOptions.CultureInvariant);
+
             var settlementName = match.Groups[1].Value;
             return settlementName;
         }
 
-
-        [HarmonyPatch(typeof(GauntletEncyclopediaScreenManager), "OnTick")]
-        public static class GauntletEncyclopediaScreenManagerOnTickPatch
+        private enum LogLevel
         {
-            static void Postfix()
-            {
-                try
-                {
-                    if (shouldClose)
-                    {
-                        gauntletEncyclopediaScreenManager.CloseEncyclopedia();
-                        shouldClose = false;
-                    }
-                }
-                catch (Exception e)
-                {
-                    Log(e);
-                }
-            }
+            Debug,
+            Error,
+            Info,
+            Disabled
         }
 
         [HarmonyPatch(typeof(EncyclopediaNavigatorVM), "ExecuteLink")]
@@ -77,32 +79,36 @@ namespace MapFind
             {
                 try
                 {
-                    Log($"EncyclopediaNavigatorVM.ExecuteLink({target})");
+                    Log($"EncyclopediaNavigatorVM.ExecuteLink({target})", LogLevel.Debug);
                     var shift = Input.IsKeyDown(InputKey.LeftShift) || Input.IsKeyDown(InputKey.RightShift);
                     if (shift)
                     {
-                        string linkName = "";
-                        if (target is Settlement settlement)
+                        string linkName = default;
+                        var type = target.GetType().Name;
+                        switch (type)
                         {
-                            linkName = settlement.StringId;
-                        }
-                        
-                        if (target is Hero hero)
-                        {
-                            linkName = hero.LastSeenPlace.StringId;
-                            //linkName = ((Hero) target).LastSeenPlace.StringId;
+                            case "Settlement":
+                            {
+                                linkName = ((Settlement) target).StringId;
+                                break;
+                            }
+                            case "Hero":
+                            {
+                                linkName = ((Hero) target).LastSeenPlace.StringId;
+                                break;
+                            }
+                            case "Kingdom":
+                            {
+                                linkName = ((Kingdom) target).Leader.LastSeenPlace.StringId;
+                                break;
+                            }
+                            case "Clan":
+                            {
+                                linkName = ((Clan) target).Leader.LastSeenPlace.StringId;
+                                break;
+                            }
                         }
 
-                        if (target is Kingdom kingdom)
-                        {
-                            linkName = kingdom.Leader.LastSeenPlace.StringId;
-                        }
-
-                        if (target is Clan clan)
-                        {
-                            linkName = clan.Leader.LastSeenPlace.StringId;
-                        }
-                        
                         SetCameraToSettlement(linkName);
                         return false;
                     }
@@ -110,7 +116,7 @@ namespace MapFind
 
                 catch (Exception ex)
                 {
-                    Log(ex);
+                    Log(ex, LogLevel.Error);
                 }
 
                 return true;
@@ -124,11 +130,29 @@ namespace MapFind
             {
                 try
                 {
+                    Log("GauntletEncyclopediaScreenManagerCtorPatch", LogLevel.Debug);
                     gauntletEncyclopediaScreenManager = __instance;
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    Log(e);
+                    Log(ex, LogLevel.Error);
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(GauntletClanScreen), MethodType.Constructor, typeof(ClanState))]
+        public static class GauntletClanScreenCtorPatch
+        {
+            private static void Postfix(GauntletClanScreen __instance)
+            {
+                try
+                {
+                    Log("GauntletClanScreenCtorPatch", LogLevel.Debug);
+                    gauntletClanScreen = __instance;
+                }
+                catch (Exception ex)
+                {
+                    Log(ex, LogLevel.Error);
                 }
             }
         }
@@ -143,10 +167,7 @@ namespace MapFind
             {
                 try
                 {
-                    if (Traverse.Create(MapScreen.Instance).Field("_mapState").GetValue<MapState>().AtMenu)
-                    {
-                        return true;
-                    }
+                    if (Traverse.Create(MapScreen.Instance).Field("_mapState").GetValue<MapState>().AtMenu) return true;
 
                     var shift = Input.IsKeyDown(InputKey.LeftShift) || Input.IsKeyDown(InputKey.RightShift);
                     if (shift)
@@ -160,35 +181,11 @@ namespace MapFind
                 }
                 catch (Exception ex)
                 {
-                    Log(ex);
+                    Log(ex, LogLevel.Error);
                 }
 
                 return true;
             }
         }
-
-        //[HarmonyPatch(typeof(MapScreen), "HandleLeftMouseButtonClick")]
-        //public static class MapScreenHandleLeftMouseButtonClickPatch
-        //{
-        //    private static void Postfix()
-        //    {
-        //        try
-        //        {
-        //            // avoids time jumping ahead a tick if a menu is open
-        //            //if (MobileParty.MainParty.CurrentSettlement == null)
-        //            var shift = Input.IsKeyDown(InputKey.LeftShift) || Input.IsKeyDown(InputKey.RightShift);
-        //            if (
-        //                Campaign.Current.TimeControlMode != CampaignTimeControlMode.StoppableFastForward &&
-        //                !shift)
-        //            {
-        //                Campaign.Current.TimeControlMode = CampaignTimeControlMode.StoppableFastForward;
-        //            }
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            Log(ex);
-        //        }
-        //    }
-        //}
     }
 }

@@ -13,7 +13,7 @@
         <FileAlignment>512</FileAlignment>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-        <PlatformTarget>AnyCPU</PlatformTarget>
+        <PlatformTarget>x64</PlatformTarget>
         <DebugSymbols>true</DebugSymbols>
         <DebugType>full</DebugType>
         <Optimize>false</Optimize>
@@ -198,7 +198,8 @@
     </ItemGroup>
     <PropertyGroup>
         <PostBuildEvent>
-            xcopy "N:\Repos\MapFind\obj\Release\MapFind.dll" "N:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\MapFind\bin\Win64_Shipping_Client" /Y
+            xcopy "N:\Repos\MapFind\obj\Debug\MapFind.dll" "N:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\MapFind\bin\Win64_Shipping_Client" /Y
+            xcopy "N:\Repos\MapFind\obj\Debug\MapFind.PDB" "N:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\MapFind\bin\Win64_Shipping_Client" /Y
             xcopy "N:\Repos\MapFind\SubModule.xml" "N:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\MapFind" /Y
         </PostBuildEvent>
     </PropertyGroup>
