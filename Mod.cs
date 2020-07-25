@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using HarmonyLib;
@@ -7,7 +8,9 @@ using SandBox.View.Map;
 using SandBox.ViewModelCollection.Nameplate;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Encyclopedia;
+using TaleWorlds.Core;
 using TaleWorlds.InputSystem;
+using TaleWorlds.Localization;
 using TaleWorlds.MountAndBlade;
 
 // ReSharper disable UnusedMember.Global    
@@ -20,7 +23,6 @@ namespace MapFind
 {
     public class Mod : MBSubModuleBase
     {
-        private const LogLevel level = LogLevel.Disabled;
         private static GauntletEncyclopediaScreenManager gauntletEncyclopediaScreenManager;
         private static GauntletClanScreen gauntletClanScreen;
         private readonly Harmony harmony = new Harmony("ca.gnivler.bannerlord.MapFind");
@@ -28,31 +30,37 @@ namespace MapFind
         protected override void OnSubModuleLoad()
         {
             //Harmony.DEBUG = true;
-            Log("Startup " + DateTime.Now.ToShortTimeString(), LogLevel.Info);
+            Log("Startup " + DateTime.Now.ToShortTimeString());
             harmony.PatchAll(Assembly.GetExecutingAssembly());
             //Harmony.DEBUG = false;
         }
 
-        private static void Log(object input, LogLevel logLevel)
+        private static void Log(object input)
         {
-            if (level <= logLevel) FileLog.Log($"[MapFind] {input ?? "null"}");
+            //FileLog.Log($"[MapFind] {input ?? "null"}");
         }
 
         private static void SetCameraToSettlement(string stringID)
         {
             try
             {
-                Log($"SetCameraToSettlement({stringID})", LogLevel.Debug);
-                if (gauntletEncyclopediaScreenManager.IsEncyclopediaOpen) gauntletEncyclopediaScreenManager.CloseEncyclopedia();
+                Log($"SetCameraToSettlement({stringID})");
+                if (gauntletEncyclopediaScreenManager.IsEncyclopediaOpen)
+                {
+                    gauntletEncyclopediaScreenManager.CloseEncyclopedia();
+                }
 
-                if (gauntletClanScreen.IsActive) Traverse.Create(gauntletClanScreen).Method("CloseClanScreen").GetValue();
+                if (gauntletClanScreen != null && gauntletClanScreen.IsActive)
+                {
+                    Traverse.Create(gauntletClanScreen).Method("CloseClanScreen").GetValue();
+                }
 
                 MapScreen.Instance.SetMapCameraPosition(Settlement.Find(stringID).Position2D);
                 Traverse.Create(MapScreen.Instance).Method("UpdateMapCamera").GetValue();
             }
             catch (Exception ex)
             {
-                Log(ex, LogLevel.Error);
+                Log(ex);
             }
         }
 
@@ -64,13 +72,6 @@ namespace MapFind
             return settlementName;
         }
 
-        private enum LogLevel
-        {
-            Debug,
-            Error,
-            Info,
-            Disabled
-        }
 
         [HarmonyPatch(typeof(EncyclopediaNavigatorVM), "ExecuteLink")]
         public static class EncyclopediaConceptPageVMExecuteLinkPatch
@@ -79,7 +80,7 @@ namespace MapFind
             {
                 try
                 {
-                    Log($"EncyclopediaNavigatorVM.ExecuteLink({target})", LogLevel.Debug);
+                    Log($"EncyclopediaNavigatorVM.ExecuteLink({target})");
                     var shift = Input.IsKeyDown(InputKey.LeftShift) || Input.IsKeyDown(InputKey.RightShift);
                     if (shift)
                     {
@@ -116,7 +117,7 @@ namespace MapFind
 
                 catch (Exception ex)
                 {
-                    Log(ex, LogLevel.Error);
+                    Log(ex);
                 }
 
                 return true;
@@ -130,12 +131,12 @@ namespace MapFind
             {
                 try
                 {
-                    Log("GauntletEncyclopediaScreenManagerCtorPatch", LogLevel.Debug);
+                    Log("GauntletEncyclopediaScreenManagerCtorPatch");
                     gauntletEncyclopediaScreenManager = __instance;
                 }
                 catch (Exception ex)
                 {
-                    Log(ex, LogLevel.Error);
+                    Log(ex);
                 }
             }
         }
@@ -147,12 +148,12 @@ namespace MapFind
             {
                 try
                 {
-                    Log("GauntletClanScreenCtorPatch", LogLevel.Debug);
+                    Log("GauntletClanScreenCtorPatch");
                     gauntletClanScreen = __instance;
                 }
                 catch (Exception ex)
                 {
-                    Log(ex, LogLevel.Error);
+                    Log(ex);
                 }
             }
         }
@@ -181,11 +182,45 @@ namespace MapFind
                 }
                 catch (Exception ex)
                 {
-                    Log(ex, LogLevel.Error);
+                    Log(ex);
                 }
 
                 return true;
             }
+        }
+
+        protected override void OnApplicationTick(float dt)
+        {
+            if (Input.IsKeyPressed(InputKey.F12))
+            {
+                var textInquiryData = new TextInquiryData(
+                    new TextObject("Enter settlement name").ToString(),
+                    "",
+                    true,
+                    true,
+                    "Find",
+                    "Cancel",
+                    GoToSettlementByString,
+                    null);
+                InformationManager.ShowTextInquiry(textInquiryData, true);
+            }
+        }
+
+        private static void GoToSettlementByString(string name)
+        {
+            var matches = Settlement.FindAll(x =>
+                x.Name.ToLower().ToString().StartsWith(name)).ToList();
+            if (matches.Count == 0)
+            {
+                return;
+            }
+
+            // prefer an exact match over a substring
+            var settlement = matches.Any(x => x.ToString().Length == name.Length)
+                ? matches.First(x => x.ToString().Length == name.Length)
+                : matches.OrderByDescending(x => x.ToString().Length).First();
+
+            SetCameraToSettlement(settlement.StringId);
         }
     }
 }

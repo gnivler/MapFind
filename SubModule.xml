@@ -1,7 +1,7 @@
 <Module>
   <Name value="MapFind"/>
   <Id value="MapFind"/>
-  <Version value="v1.1.1"/>
+  <Version value="v1.2.0"/>
   <SingleplayerModule value="true"/>
   <MultiplayerModule value="false"/>
   <DependedModules>
