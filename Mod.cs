@@ -29,10 +29,8 @@ namespace MapFind
 
         protected override void OnSubModuleLoad()
         {
-            //Harmony.DEBUG = true;
             Log("Startup " + DateTime.Now.ToShortTimeString());
             harmony.PatchAll(Assembly.GetExecutingAssembly());
-            //Harmony.DEBUG = false;
         }
 
         private static void Log(object input)
@@ -45,15 +43,7 @@ namespace MapFind
             try
             {
                 Log($"SetCameraToSettlement({stringID})");
-                if (gauntletEncyclopediaScreenManager.IsEncyclopediaOpen)
-                {
-                    gauntletEncyclopediaScreenManager.CloseEncyclopedia();
-                }
-
-                if (gauntletClanScreen != null && gauntletClanScreen.IsActive)
-                {
-                    Traverse.Create(gauntletClanScreen).Method("CloseClanScreen").GetValue();
-                }
+                CloseAnyOpenWindows();
 
                 MapScreen.Instance.SetMapCameraPosition(Settlement.Find(stringID).Position2D);
                 Traverse.Create(MapScreen.Instance).Method("UpdateMapCamera").GetValue();
@@ -61,6 +51,19 @@ namespace MapFind
             catch (Exception ex)
             {
                 Log(ex);
+            }
+        }
+
+        private static void CloseAnyOpenWindows()
+        {
+            if (gauntletEncyclopediaScreenManager.IsEncyclopediaOpen)
+            {
+                gauntletEncyclopediaScreenManager.CloseEncyclopedia();
+            }
+
+            if (gauntletClanScreen != null && gauntletClanScreen.IsActive)
+            {
+                Traverse.Create(gauntletClanScreen).Method("CloseClanScreen").GetValue();
             }
         }
 
