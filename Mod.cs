@@ -8,6 +8,7 @@ using SandBox.View.Map;
 using SandBox.ViewModelCollection.Nameplate;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Encyclopedia;
+using TaleWorlds.CampaignSystem.ViewModelCollection.Inventory;
 using TaleWorlds.Core;
 using TaleWorlds.InputSystem;
 using TaleWorlds.Localization;
@@ -45,7 +46,11 @@ namespace MapFind
                 Log($"SetCameraToSettlement({stringID})");
                 CloseAnyOpenWindows();
 
+#if !OneFourThree
+                MapScreen.Instance.FastMoveCameraToPosition(Settlement.Find(stringID).Position2D);
+#else
                 MapScreen.Instance.SetMapCameraPosition(Settlement.Find(stringID).Position2D);
+#endif
                 Traverse.Create(MapScreen.Instance).Method("UpdateMapCamera").GetValue();
             }
             catch (Exception ex)
@@ -179,7 +184,19 @@ namespace MapFind
                         var ctrl = Input.IsKeyDown(InputKey.LeftControl) || Input.IsKeyDown(InputKey.RightControl);
                         MobileParty.MainParty.SetMoveGoToSettlement(__instance.Settlement);
                         Campaign.Current.TimeControlMode = CampaignTimeControlMode.StoppableFastForward;
+#if !OneFourThree
+                        if (ctrl)
+                        {
+                            MapScreen.Instance.CurrentCameraFollowMode = MapScreen.CameraFollowMode.Free;
+                        }
+                        else
+                        {
+                            MapScreen.Instance.CurrentCameraFollowMode = MapScreen.CameraFollowMode.FollowParty;
+                        }
+#else
                         MapScreen.Instance.CameraFollowMode = !ctrl;
+#endif
+
                         return false;
                     }
                 }
@@ -194,7 +211,8 @@ namespace MapFind
 
         protected override void OnApplicationTick(float dt)
         {
-            if (Input.IsKeyPressed(InputKey.F12))
+            if (Input.IsKeyDown(InputKey.LeftControl) || Input.IsKeyDown(InputKey.RightControl) &&
+                Input.IsKeyPressed(InputKey.F12))
             {
                 var textInquiryData = new TextInquiryData(
                     new TextObject("Enter settlement name").ToString(),
