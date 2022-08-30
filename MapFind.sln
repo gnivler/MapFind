@@ -1,19 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapFind", "MapFind.csproj", "{637F4AC9-A0CB-48C1-9CE4-FA6A6CFD6415}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapFind", "MapFind.csproj", "{6BAD80D0-FDC0-414A-A3C7-91415DE35DA6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|Any CPU = Debug|Any CPU
-		Release|Any CPU = Release|Any CPU
-		Release 142|Any CPU = Release 142|Any CPU
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{637F4AC9-A0CB-48C1-9CE4-FA6A6CFD6415}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{637F4AC9-A0CB-48C1-9CE4-FA6A6CFD6415}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{637F4AC9-A0CB-48C1-9CE4-FA6A6CFD6415}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{637F4AC9-A0CB-48C1-9CE4-FA6A6CFD6415}.Release|Any CPU.Build.0 = Release|Any CPU
-		{637F4AC9-A0CB-48C1-9CE4-FA6A6CFD6415}.Release 142|Any CPU.ActiveCfg = Release 143|Any CPU
-		{637F4AC9-A0CB-48C1-9CE4-FA6A6CFD6415}.Release 142|Any CPU.Build.0 = Release 143|Any CPU
+		{6BAD80D0-FDC0-414A-A3C7-91415DE35DA6}.Debug|x64.ActiveCfg = Debug|x64
+		{6BAD80D0-FDC0-414A-A3C7-91415DE35DA6}.Debug|x64.Build.0 = Debug|x64
+		{6BAD80D0-FDC0-414A-A3C7-91415DE35DA6}.Release|x64.ActiveCfg = Release|x64
+		{6BAD80D0-FDC0-414A-A3C7-91415DE35DA6}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 EndGlobal
