@@ -7,12 +7,18 @@ using SandBox.GauntletUI;
 using SandBox.View.Map;
 using SandBox.ViewModelCollection.Nameplate;
 using TaleWorlds.CampaignSystem;
+using TaleWorlds.CampaignSystem.GameState;
+using TaleWorlds.CampaignSystem.Party;
+using TaleWorlds.CampaignSystem.Settlements;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Encyclopedia;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Inventory;
 using TaleWorlds.Core;
+using TaleWorlds.Engine.Screens;
 using TaleWorlds.InputSystem;
+using TaleWorlds.Library;
 using TaleWorlds.Localization;
 using TaleWorlds.MountAndBlade;
+using TaleWorlds.ScreenSystem;
 
 // ReSharper disable UnusedMember.Global    
 // ReSharper disable UnusedMember.Local
@@ -22,9 +28,9 @@ using TaleWorlds.MountAndBlade;
 
 namespace MapFind
 {
-    public class Mod : MBSubModuleBase
+    public class SubModule : MBSubModuleBase
     {
-        private static GauntletEncyclopediaScreenManager gauntletEncyclopediaScreenManager;
+        private static MapEncyclopediaView mapEncyclopediaView;
         private static GauntletClanScreen gauntletClanScreen;
         private readonly Harmony harmony = new Harmony("ca.gnivler.bannerlord.MapFind");
 
@@ -45,12 +51,7 @@ namespace MapFind
             {
                 Log($"SetCameraToSettlement({stringID})");
                 CloseAnyOpenWindows();
-
-#if !OneFourThree
                 MapScreen.Instance.FastMoveCameraToPosition(Settlement.Find(stringID).Position2D);
-#else
-                MapScreen.Instance.SetMapCameraPosition(Settlement.Find(stringID).Position2D);
-#endif
                 Traverse.Create(MapScreen.Instance).Method("UpdateMapCamera").GetValue();
             }
             catch (Exception ex)
@@ -61,9 +62,9 @@ namespace MapFind
 
         private static void CloseAnyOpenWindows()
         {
-            if (gauntletEncyclopediaScreenManager.IsEncyclopediaOpen)
+            if (mapEncyclopediaView.IsEncyclopediaOpen)
             {
-                gauntletEncyclopediaScreenManager.CloseEncyclopedia();
+                mapEncyclopediaView.CloseEncyclopedia();
             }
 
             if (gauntletClanScreen != null && gauntletClanScreen.IsActive)
@@ -98,22 +99,22 @@ namespace MapFind
                         {
                             case "Settlement":
                             {
-                                linkName = ((Settlement) target).StringId;
+                                linkName = ((Settlement)target).StringId;
                                 break;
                             }
                             case "Hero":
                             {
-                                linkName = ((Hero) target).LastSeenPlace.StringId;
+                                linkName = ((Hero)target).LastSeenPlace.StringId;
                                 break;
                             }
                             case "Kingdom":
                             {
-                                linkName = ((Kingdom) target).Leader.LastSeenPlace.StringId;
+                                linkName = ((Kingdom)target).Leader.LastSeenPlace.StringId;
                                 break;
                             }
                             case "Clan":
                             {
-                                linkName = ((Clan) target).Leader.LastSeenPlace.StringId;
+                                linkName = ((Clan)target).Leader.LastSeenPlace.StringId;
                                 break;
                             }
                         }
@@ -132,15 +133,15 @@ namespace MapFind
             }
         }
 
-        [HarmonyPatch(typeof(GauntletEncyclopediaScreenManager), MethodType.Constructor)]
-        public static class GauntletEncyclopediaScreenManagerCtorPatch
+        [HarmonyPatch(typeof(MapEncyclopediaView), MethodType.Constructor)]
+        public static class MapEncyclopediaViewCtorPatch
         {
-            private static void Postfix(GauntletEncyclopediaScreenManager __instance)
+            private static void Postfix(MapEncyclopediaView __instance)
             {
                 try
                 {
-                    Log("GauntletEncyclopediaScreenManagerCtorPatch");
-                    gauntletEncyclopediaScreenManager = __instance;
+                    Log("MapEncyclopediaView");
+                    mapEncyclopediaView = __instance;
                 }
                 catch (Exception ex)
                 {
@@ -184,7 +185,7 @@ namespace MapFind
                         var ctrl = Input.IsKeyDown(InputKey.LeftControl) || Input.IsKeyDown(InputKey.RightControl);
                         MobileParty.MainParty.SetMoveGoToSettlement(__instance.Settlement);
                         Campaign.Current.TimeControlMode = CampaignTimeControlMode.StoppableFastForward;
-#if !OneFourThree
+
                         if (ctrl)
                         {
                             MapScreen.Instance.CurrentCameraFollowMode = MapScreen.CameraFollowMode.Free;
@@ -193,9 +194,6 @@ namespace MapFind
                         {
                             MapScreen.Instance.CurrentCameraFollowMode = MapScreen.CameraFollowMode.FollowParty;
                         }
-#else
-                        MapScreen.Instance.CameraFollowMode = !ctrl;
-#endif
 
                         return false;
                     }
@@ -211,7 +209,14 @@ namespace MapFind
 
         protected override void OnApplicationTick(float dt)
         {
-            if (Input.IsKeyDown(InputKey.LeftControl) || Input.IsKeyDown(InputKey.RightControl) &&
+            // thanks Cheyron for the fix
+            if (!(ScreenManager.TopScreen is MapScreen))
+            {
+                return;
+            }
+
+            if ((Input.IsKeyDown(InputKey.LeftControl) || Input.IsKeyDown(InputKey.RightControl))
+                &&
                 Input.IsKeyPressed(InputKey.F12))
             {
                 var textInquiryData = new TextInquiryData(
@@ -230,7 +235,7 @@ namespace MapFind
         private static void GoToSettlementByString(string name)
         {
             var matches = Settlement.FindAll(x =>
-                x.Name.ToLower().ToString().StartsWith(name)).ToList();
+                x.Name.ToString().ToLower().StartsWith(name)).ToList();
             if (matches.Count == 0)
             {
                 return;
